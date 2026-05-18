@@ -29,6 +29,7 @@ acceptance test. Has full authority delegated by the user for this build session
 
 ## Open Questions
 - [ ] What is the actual non-developer acceptance-test pass rate on a real iPhone 12? — owner: Gerald — since: 2026-05-19
+- [ ] **Mini-map for v1.1 — directly conflicts with the spec's design pillar.** Gerald raised this in response to N=1 disorientation feedback. The spec says: "the accreting point cloud IS the map. There is no fog of war to lift — there is only the void and what you have heard back from it." A mini-map gives the player knowledge they didn't earn through sonar, which is the central inversion the game is built on. Before adding one: (a) decide whether the design pillar is being explicitly relaxed (and document that), (b) try the cheaper alternatives listed in `ux.md ## Open Questions` first (brighter trajectory; higher floor brightness; faster sweep; audio echo cue), (c) consider whether the disorientation is the *point* of the game and not a bug. Recommend running (a)+(b) before committing to (c). — owner: Gerald — since: 2026-05-19
 - [ ] Untested assumption: depth-buffer readback at 10Hz won't tank fps on iOS Safari (readRenderTargetPixels stalls the GPU pipeline) — owner: [[arch]] — since: 2026-05-19
 - [ ] Untested assumption: 150k additive THREE.Points stays under 4ms on iPhone 12 (fillrate-bound on OLED) — owner: [[arch]] — since: 2026-05-19
 - [ ] Untested assumption: marching-cubes-generated cave is actually navigable without hand touch-up (auto-gen tends to produce pinch points and bad collision normals) — owner: [[dev]] — since: 2026-05-19
@@ -45,4 +46,6 @@ Blocked by:
 Feeds into: [[dev]] [[ux]] [[qa]]
 
 ## Session Log
+- 2026-05-19 — v1 scope **closed**. All 5 spec goals implemented and shipped to GitHub. Two post-ship bugs found and fixed (boot-listener attachment timing; r160 BufferAttribute.updateRange API). Real-device acceptance still pending Gerald.
+- 2026-05-19 — Mini-map raised as a v1.1 candidate. Flagged the explicit conflict with the spec's "no fog of war to lift" design pillar. NOT a decision; logged as Open Question with alternatives. Recommend trying cheaper non-UI fixes first before relaxing the pillar.
 - 2026-05-19 — INIT. Scope frozen to spec's 5 goals. Challenged spec with 5 untested assumptions above. PM has full authority for this build session per user instruction.
