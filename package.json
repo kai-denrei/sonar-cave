@@ -1,0 +1,24 @@
+{
+  "name": "sonar-cave",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "PWA submersible sonar-cave PoC",
+  "scripts": {
+    "dev": "vite",
+    "prebuild": "bash scripts/bust.sh --quiet",
+    "build": "vite build",
+    "postbuild": "node scripts/gen-precache.js",
+    "preview": "vite preview --host",
+    "build:cave": "node scripts/gen-cave.js",
+    "bust": "bash scripts/bust.sh"
+  },
+  "dependencies": {
+    "three": "^0.160.0",
+    "three-mesh-bvh": "^0.7.0"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0",
+    "simplex-noise": "^4.0.0"
+  }
+}

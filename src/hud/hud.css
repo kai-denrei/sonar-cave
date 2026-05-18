@@ -1,0 +1,339 @@
+/* Sonar Cave — full-screen black canvas + HUD overlay */
+:root {
+  --bg: #000000;
+  --panel: #0a0e12;
+  --panel-border: #1e2630;
+  --cyan-bright: #5af0ff;
+  --cyan-mid: #3fdcef;
+  --cyan-dim: #1a8a99;
+  --amber: #ffb84a;
+  --warn: #ff4530;
+  --trail: #9eff5a;
+  --text: #e8eef2;
+  --text-dim: #6a7a85;
+  --mono: 'JetBrains Mono', 'IBM Plex Mono', 'SF Mono', Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+  touch-action: none;
+}
+
+#scene {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  display: block;
+  background: var(--bg);
+  z-index: 0;
+}
+
+#hud-root {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Boot screen — pre-input gate to unlock AudioContext */
+#boot {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  z-index: 100;
+  transition: opacity 0.6s ease;
+}
+#boot.hidden { opacity: 0; pointer-events: none; }
+
+#boot-btn {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--panel-border);
+  color: var(--cyan-bright);
+  font-family: var(--mono);
+  font-size: 14px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  padding: 18px 36px;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+#boot-btn:active { color: #fff; border-color: var(--cyan-bright); }
+
+/* ===== HUD strip (top of screen) ===== */
+.hud-strip {
+  position: absolute;
+  top: max(8px, env(safe-area-inset-top));
+  left: max(8px, env(safe-area-inset-left));
+  right: max(8px, env(safe-area-inset-right));
+  display: flex;
+  gap: 6px;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  padding: 4px 8px 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  color: var(--text);
+}
+
+.hud-label {
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  line-height: 1.1;
+  margin-bottom: 2px;
+}
+
+.hud-val {
+  font-family: var(--mono);
+  font-size: 16px;
+  color: var(--amber);
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+.hud-val-lg { font-size: 22px; letter-spacing: 0.02em; }
+
+.hud-sub {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+  margin-top: 1px;
+}
+
+.hud-mono { font-variant-numeric: tabular-nums; color: var(--text); }
+
+.hud-panel.warn .hud-val,
+.hud-panel.warn .hud-val-lg { color: var(--warn); }
+.hud-panel.warn { border-color: var(--warn); }
+
+/* Depth panel — slightly wider, the headline gauge */
+.hud-depth { min-width: 90px; flex: 0 0 auto; }
+.hud-heading { width: 78px; flex: 0 0 auto; align-items: center; }
+.hud-pitch   { width: 86px; flex: 0 0 auto; align-items: center; }
+.hud-alt     { min-width: 70px; flex: 0 0 auto; }
+.hud-sweep   { width: 60px; flex: 0 0 auto; align-items: center; margin-left: auto; }
+
+/* SVG gauge primitives — minimal, no gradients, hairline strokes */
+.hud-compass, .hud-sweep-dial { width: 56px; height: 56px; display: block; }
+.hud-horizon { width: 78px; height: 50px; display: block; }
+
+.hud-ring {
+  fill: none;
+  stroke: var(--panel-border);
+  stroke-width: 1;
+}
+.hud-tick-maj { stroke: var(--text); stroke-width: 1; }
+.hud-tick-min { stroke: var(--text-dim); stroke-width: 0.5; }
+.hud-card-letter {
+  fill: var(--text);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.05em;
+}
+.hud-lubber { stroke: var(--amber); stroke-width: 1.5; }
+
+.hud-horizon-bg { fill: transparent; stroke: var(--panel-border); stroke-width: 1; }
+.hud-horizon-line { stroke: var(--cyan-mid); stroke-width: 1; }
+.hud-horizon-tick { stroke: var(--text-dim); stroke-width: 0.5; }
+.hud-cross { stroke: var(--amber); fill: var(--amber); stroke-width: 1; }
+
+.hud-sweep-ctr { stroke: var(--text); stroke-width: 1; }
+.hud-sweep-arm {
+  stroke: var(--cyan-bright);
+  stroke-width: 1.5;
+  stroke-linecap: square;
+}
+
+/* ===== Mobile virtual joysticks (Phase 4) ===== */
+.stick {
+  position: absolute;
+  width: 140px;
+  height: 140px;
+  bottom: max(20px, env(safe-area-inset-bottom));
+  pointer-events: auto;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  touch-action: none;
+  -webkit-touch-callout: none;
+}
+.stick.left  { left:  max(20px, env(safe-area-inset-left)); }
+.stick.right { right: max(20px, env(safe-area-inset-right)); }
+.stick.active { opacity: 0.85; }
+
+.stick-ring {
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--panel-border);
+  border-radius: 50%;
+  background: rgba(10, 14, 18, 0.4);
+}
+
+.stick-thumb {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 50px;
+  height: 50px;
+  margin: -25px 0 0 -25px;
+  border: 1px solid var(--cyan-mid);
+  background: rgba(63, 220, 239, 0.08);
+  border-radius: 50%;
+  transform: translate(0, 0);
+  pointer-events: none;
+}
+
+.ping-btn {
+  position: absolute;
+  right: max(80px, calc(env(safe-area-inset-right) + 80px));
+  bottom: calc(max(20px, env(safe-area-inset-bottom)) + 160px);
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(10, 14, 18, 0.6);
+  border: 1px solid var(--cyan-mid);
+  color: var(--cyan-bright);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-align: center;
+  line-height: 64px;
+  pointer-events: auto;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  cursor: pointer;
+  padding: 0;
+}
+.ping-btn:active { background: rgba(90, 240, 255, 0.18); color: #fff; }
+.ping-btn.cooldown { color: var(--text-dim); border-color: var(--panel-border); }
+
+/* ===== Surfaced overlay (Phase 5) ===== */
+#surfaced {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.9);
+  color: var(--cyan-bright);
+  font-family: var(--mono);
+  z-index: 1000;
+  pointer-events: auto;
+}
+#surfaced .surfaced-title {
+  font-size: 28px;
+  letter-spacing: 0.45em;
+  color: var(--cyan-bright);
+}
+#surfaced .surfaced-time {
+  margin-top: 18px;
+  font-size: 14px;
+  color: var(--amber);
+  letter-spacing: 0.15em;
+}
+#surfaced .surfaced-again {
+  margin-top: 28px;
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--panel-border);
+  color: var(--cyan-bright);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  padding: 14px 28px;
+  cursor: pointer;
+}
+#surfaced .surfaced-again:active { color: #fff; border-color: var(--cyan-bright); }
+
+/* ===== Install affordance ===== */
+#install-btn {
+  position: absolute;
+  top: max(8px, env(safe-area-inset-top));
+  right: max(8px, env(safe-area-inset-right));
+  z-index: 50;
+  appearance: none;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  cursor: pointer;
+  pointer-events: auto;
+  display: none;
+}
+#install-btn.show { display: block; }
+
+/* ===== Calibration intro hint ===== */
+.calib-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 18%;
+  transform: translateX(-50%);
+  color: var(--cyan-mid);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  pointer-events: none;
+  opacity: 0.7;
+  text-align: center;
+}
+.calib-hint .calib-sub {
+  display: block;
+  margin-top: 6px;
+  color: var(--text-dim);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+}
+
+/* Compact tweaks for narrow phones */
+@media (max-width: 640px) {
+  .hud-strip { gap: 4px; }
+  .hud-panel { padding: 3px 6px 4px; }
+  .hud-val-lg { font-size: 17px; }
+  .hud-val { font-size: 13px; }
+  .hud-label { font-size: 8px; }
+  .hud-sub { font-size: 9px; }
+  .hud-compass, .hud-sweep-dial { width: 42px; height: 42px; }
+  .hud-horizon { width: 58px; height: 38px; }
+  .hud-depth { min-width: 78px; }
+  .hud-heading { width: 56px; }
+  .hud-pitch { width: 64px; }
+  .hud-alt { min-width: 58px; }
+  .hud-sweep { width: 48px; }
+}
+@media (max-width: 400px) {
+  .hud-sweep { display: none; } /* drop the optional dial on very narrow phones */
+}
