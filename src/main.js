@@ -362,10 +362,25 @@ function maybeShowInstall() {
   if (deferredInstallEvent) ensureInstallButton();
 }
 
+// Service worker is production-only. In dev (Vite's dev server) a stale SW
+// from a previous `npm run preview` would intercept and serve cached HTML
+// forever; only PROD builds have a token-keyed SW that invalidates correctly.
+// In dev, also unregister any SW that's somehow still around — recovers users
+// who hit the stale-SW trap before this fix landed.
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js', { scope: './' }).catch((err) => {
-      console.warn('[sw] register failed', err);
+  if (import.meta.env.PROD) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js', { scope: './' }).catch((err) => {
+        console.warn('[sw] register failed', err);
+      });
     });
-  });
+  } else {
+    navigator.serviceWorker.getRegistrations().then((regs) => {
+      if (regs.length) {
+        console.info('[sw] dev mode — unregistering', regs.length, 'leftover worker(s)');
+        regs.forEach((r) => r.unregister());
+        caches.keys().then((ks) => ks.forEach((k) => caches.delete(k)));
+      }
+    }).catch(() => {});
+  }
 }
