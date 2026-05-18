@@ -32,9 +32,10 @@ runs end-to-end.
 ## Dead Ends
 | Date | What was tried | Why it failed / was rejected |
 |---|---|---|
+| 2026-05-19 | Attaching the boot button click/touchend listeners at the END of main.js, after all top-level code | Any top-level throw (WebGL init, Three setup, top-level `new THREE.Vector3()` in dependency chain) leaves the button visible but unresponsive because the script aborts before reaching the listener-attachment line. User reported "Tap to begin doesn't respond." Fix: attach boot listeners as the FIRST executable code in main.js (right after the four getElementById calls), wrap start() invocation in try/catch + console.error so partial failure leaves a debuggable trace |
 
 ## Lessons
-<!-- Distilled principles from Dead Ends. Written to be read cold. -->
+- In a single-page-app bootstrap, attach the first-interaction listener BEFORE any top-level code that can throw (renderer init, expensive Three.js objects, anything that touches WebGL). Otherwise the page "looks loaded" but is dead. Wrap the click handler's body in try/catch + console.error so a downstream failure leaves a breadcrumb. — from dead end on 2026-05-19
 
 ## Open Questions
 - [ ] What's the safe `MeshBVH` build option set for an auto-generated marching-cubes mesh? (lazyGeneration off, maxLeafTris ~10?) — owner: Gerald — since: 2026-05-19

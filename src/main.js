@@ -30,6 +30,25 @@ const bootEl = document.getElementById('boot');
 const bootBtn = document.getElementById('boot-btn');
 const hudRoot = document.getElementById('hud-root');
 
+// ---- Boot listeners attached FIRST, before any code below that could throw.
+// Without this, a top-level error (e.g. WebGL init) leaves the button visible
+// but unresponsive. The whole boot overlay is also a click target so taps on
+// the black background count as "tap to begin" too.
+let bootClicked = false;
+function onBootClick(e) {
+  if (bootClicked) return;
+  bootClicked = true;
+  if (e) e.preventDefault();
+  // Defer to next tick so any error in start() doesn't swallow the visual
+  // hidden-fade that the user expects.
+  bootEl.classList.add('hidden');
+  setTimeout(() => { try { start(); } catch (err) { console.error('[boot] start failed', err); } }, 0);
+}
+bootBtn.addEventListener('click', onBootClick);
+bootBtn.addEventListener('pointerdown', onBootClick);
+bootEl.addEventListener('click', onBootClick);
+bootEl.addEventListener('pointerdown', onBootClick);
+
 const { renderer, scene, camera, isContextLost } = createScene(canvas);
 
 // ---------- Two scenes: main (visible) + cave (sonar-only) ----------
@@ -143,10 +162,12 @@ function appendTrail(pos) {
 }
 
 async function start() {
-  bootEl.classList.add('hidden');
+  // Boot already faded by onBootClick. Remove the overlay after the transition.
   setTimeout(() => bootEl.remove(), 700);
 
-  // Audio MUST unlock from inside this user-gesture handler.
+  // Audio MUST unlock from inside the user-gesture handler. onBootClick fires
+  // start() via setTimeout(…, 0), which keeps us within the user-activation
+  // window on every browser we care about.
   unlockAudio();
   startAmbient();
 
@@ -285,8 +306,7 @@ function onSurfaced() {
   maybeShowInstall();
 }
 
-bootBtn.addEventListener('click', start, { once: true });
-bootBtn.addEventListener('touchend', (e) => { e.preventDefault(); start(); }, { once: true, passive: false });
+// (Boot listeners attached at top of file — before anything that can throw.)
 
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) loop.stop();
