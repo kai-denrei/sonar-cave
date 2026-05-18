@@ -100,8 +100,11 @@ export function createPointCloud() {
     mat.uniforms.uNow.value = nowSeconds;
     geo.setDrawRange(0, filled);
     if (dirtyLo <= dirtyHi) {
-      posAttr.updateRange = { offset: dirtyLo * 3, count: (dirtyHi - dirtyLo + 1) * 3 };
-      birAttr.updateRange = { offset: dirtyLo,     count: (dirtyHi - dirtyLo + 1) };
+      // r160+ partial-upload API. updateRange-the-object is deprecated.
+      posAttr.clearUpdateRanges();
+      birAttr.clearUpdateRanges();
+      posAttr.addUpdateRange(dirtyLo * 3, (dirtyHi - dirtyLo + 1) * 3);
+      birAttr.addUpdateRange(dirtyLo,     (dirtyHi - dirtyLo + 1));
       posAttr.needsUpdate = true;
       birAttr.needsUpdate = true;
       dirtyLo = Infinity;
